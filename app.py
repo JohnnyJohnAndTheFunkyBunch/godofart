@@ -2,10 +2,11 @@
 from flask import Flask
 from flask import jsonify
 from flask import request
+from flask import render_template
 from flask_socketio import SocketIO, emit
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='')
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app)
 
@@ -14,9 +15,10 @@ nodes = set()
 uids = []
 highest_id = 0
 
+
 @app.route('/')
 def index():
-    return "Hello, World!"
+    return render_template("index.html")
 
 ##################
 #  Device calls  #
@@ -136,17 +138,23 @@ def restart():
     socketio.emit('graph', {'nodes':list(nodes), 'edges': list(edges)})
     return jsonify({'message': "success"})
 
-@app.route('/api/clearedges', methods=['GET'])
+@app.route('/api/clearedges', methods=['POST'])
 def clear_edges():
     global edges
     edges.clear()
     socketio.emit('graph', {'nodes':list(nodes), 'edges': list(edges)})
     return jsonify({'message': "success"})
 
-@app.route('/api/clearnodes', methods=['GET'])
+@app.route('/api/clearnodes', methods=['POST'])
 def clear_nodes():
+    global highest_id
     global nodes
+    global edges
+    global uids
     nodes.clear()
+    edges.clear()
+    uids = []
+    highest_id = 0
     socketio.emit('graph', {'nodes':list(nodes), 'edges': list(edges)})
     return jsonify({'message': "success"})
 
