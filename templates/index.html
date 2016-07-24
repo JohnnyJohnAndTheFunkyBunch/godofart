@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.link {
+  stroke: #000;
+  stroke-width: 1.5px;
+}
+
+.node {
+  fill: #000;
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+
+</style>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+<body>
+<div class="row">
+  <div class="col-md-6" >
+    <div class="row" style="padding-left:10px">
+      <div class="col-md-6" >
+        <h4>Add/Remove Nodes</h4>
+        <form name = "register" id="register" action="http://52.27.138.18:5000/api/register" method = "POST">
+            <button id = "registerbtn" class="btn btn-success" type="submit">Register</button>
+        </form>
+        <form class="form-inline" id="unregister" action="http://52.27.138.18:5000/api/unregister" method = "POST">
+          <div class="form-group">
+            <input class="form-control" id="unregisterinput" size="3" placeholder="ID">
+          </div>
+          <button id = "unregisterbtn" type="submit" class="btn btn-danger">Unregister</button>
+        </form>
+      </div>
+      <div class="col-md-6">
+        <h4>Add/Remove Edges</h4>
+        <form class="form-inline" id="unregister" action="http://52.27.138.18:5000/api/add" method = "POST">
+          <div class="form-group">
+            <input class="form-control" id="edgesource" size="3" placeholder="ID">
+            <input class="form-control" id="edgetarget" size="3" placeholder="ID">
+          </div>
+          <button id = "addedgebtn" class="btn btn-success" type="submit" class="btn btn-default">Add</button>
+          <button id = "removeedgebtn" class="btn btn-danger" type="submit" class="btn btn-default">Remove</button>
+        </form>
+      </div>
+    </div>
+    <div class="row">
+        <div id="sexyshit" class="col-md-12">
+        </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="row">
+      <div class="col-md-6">
+        <ul class="nodelist">
+        </ul>
+      </div>
+      <div class="col-md-6">
+        <ul class="edgelist">
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
+<!-- button shit -->
+<script>
+    $(function(){
+        $('#registerbtn').on('click', function(e){
+            e.preventDefault(); // prevent the default click action
+
+            var $form = $('#register');
+
+            $.ajax({
+                url: $form.attr("action"),
+                type: $form.attr("method"),
+                data: $form.serialize(),
+                success: function (response) {
+                },
+                error: function (response) {
+                },
+            });
+        });
+        $('#unregisterbtn').on('click', function(e){
+            e.preventDefault(); // prevent the default click action
+
+            var $form = $('#unregister');
+
+            $.post('api/unregister', { id: $("#unregisterinput").val().toString()}, 
+                function(returnedData){
+                     console.log(returnedData);
+            });
+        });
+
+        $('#addedgebtn').on('click', function(e){
+            e.preventDefault(); // prevent the default click action
+
+            $.post('api/link', { id: $("#edgesource").val().toString() , nid: $("#edgetarget").val().toString()}, 
+                function(returnedData){
+                     console.log(returnedData);
+            });
+        });
+        $('#removeedgebtn').on('click', function(e){
+            e.preventDefault(); // prevent the default click action
+
+            $.post('api/unlink', { id: $("#edgesource").val().toString() , nid: $("#edgetarget").val().toString()}, 
+                function(returnedData){
+                     console.log(returnedData);
+            });
+        });
+    });
+</script>
+<script>
+var color = d3.scale.category10();
+
+function refreshlist() {
+    $(".nodelist").empty();
+    $(".nodelist").append('<h4>Nodes</h4>');
+    for (i = 0; i < nodes.length; i++) {
+        $(".nodelist").append('<li><span class="glyphicon glyphicon-heart" aria-hidden="true" style="color:'+color(parseInt(nodes[i].id))+'"></span> '+nodes[i].id+'</li>');
+    }
+    $(".edgelist").empty();
+    $(".edgelist").append('<h4>Edges</h4>');
+    for (i = 0; i < links.length; i++) {
+        $(".edgelist").append('<li> ' + 
+            links[i].source.id +
+            '<span class="glyphicon glyphicon-heart" aria-hidden="true" style="color:'+
+            color(parseInt(links[i].source.id))+'"></span> '+
+            '<span class="glyphicon glyphicon-resize-horizontal" aria-hidden="true"></span> '+
+            '<span class="glyphicon glyphicon-heart" aria-hidden="true" style="color:'+
+            color(parseInt(links[i].target.id))+'"></span> '+
+            links[i].target.id+'</li>');
+    }
+}
+
+var width = 600,
+    height = 600;
+
+var nodes_dict = {};
+var nodes = [],
+    links = [];
+
+var force = d3.layout.force()
+    .nodes(nodes)
+    .links(links)
+    .charge(-400)
+    .linkDistance(120)
+    .size([width, height])
+    .on("tick", tick);
+
+var svg = d3.select("#sexyshit").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var node = svg.selectAll(".node"),
+    link = svg.selectAll(".link");
+
+// 1. Add three nodes and three links.
+/*
+var a = {id: "a"}, b = {id: "b"}, c = {id: "c"};
+nodes.push(a, b, c);
+links.push({source: a, target: b}, {source: a, target: c}, {source: b, target: c});
+start();
+*/
+
+// 2. Remove node B and associated links.
+/*
+setTimeout(function() {
+  nodes.splice(1, 1); // remove b
+  links.shift(); // remove a-b
+  links.pop(); // remove b-c
+  start();
+}, 3000);
+
+// Add node B back.
+setTimeout(function() {
+  var a = nodes[0], b = {id: "b"}, c = nodes[1];
+  nodes.push(b);
+  links.push({source: a, target: b}, {source: b, target: c});
+  start();
+}, 6000);
+*/
+
+function start() {
+  refreshlist();
+  link = link.data(force.links(), function(d) { return d.source.id + "-" + d.target.id; });
+  link.enter().insert("line", ".node").attr("class", "link");
+  link.exit().remove();
+
+  node = node.data(force.nodes(), function(d) { return d.id;});
+  node.enter().append("circle").attr("class", function(d) { return "node " + d.id; }).attr("r", 8);
+  node.exit().remove();
+
+  force.start();
+}
+
+function tick() {
+
+    colors = ["red",
+     "orange",
+     "yellow",
+     "green",
+     "blue",
+     "violet"];
+
+  node.attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; })
+      .attr("r", 30)
+      .style("fill", function(d) {return color(parseInt(d.id))});
+
+  link.attr("x1", function(d) { return d.source.x; })
+      .attr("y1", function(d) { return d.source.y; })
+      .attr("x2", function(d) { return d.target.x; })
+      .attr("y2", function(d) { return d.target.y; });
+}
+
+</script>
+
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.4.8/socket.io.min.js"></script>
+<script type="text/javascript" charset="utf-8">
+    var socket = io.connect('http://52.27.138.18:5000');
+    socket.on('connect', function() {
+    });
+    socket.on('graph', function (msg) {
+        nodes.splice(0,nodes.length);
+        links.splice(0,links.length);
+        graph_nodes = msg.nodes;
+        graph_edges = msg.edges;
+        for (i = 0; i < graph_nodes.length; i++) {
+            var node = {"id":graph_nodes[i].toString()};
+            nodes_dict[graph_nodes[i].toString()] = node;
+            nodes.push(node);
+        }
+        for (i = 0; i < graph_edges.length; i++) {
+            links.push({source: nodes_dict[graph_edges[i][0]], target: nodes_dict[graph_edges[i][1]]})
+        }
+        start();
+    });
+    socket.on('register', function(msg) {
+        nodes.push({"id": msg.id.toString()});
+        start();
+    });
+    socket.on('unregister', function(msg) {
+        myid = msg.id.toString();
+        delete nodes_dict[myid];
+        for(i = 0; i < nodes.length; i++) {
+            if (nodes[i].id == myid) {
+                nodes.splice(i,1);
+                break;
+            }
+        }
+        for (i = 0; i < links.length; i++) {
+            if (links[i].source.id == myid || links[i].target.id == myid) {
+                links.splice(i,1);
+                i = i - 1;
+            }
+        }
+        start()
+    });
+    socket.on('link', function(msg) {
+        sid = msg.edge[0].toString();
+        tid = msg.edge[1].toString();
+        sid_node = {};
+        tid_node = {};
+        for (i = 0; i < nodes.length; i++) {
+            if (nodes[i].id == sid) {
+                sid_node = nodes[i];
+            }
+            if (nodes[i].id == tid) {
+                tid_node = nodes[i];
+            }
+        }
+        links.push({source: sid_node, target: tid_node});
+        start();
+    });
+    socket.on('unlink', function(msg) {
+        sid = msg.edge[0].toString();
+        tid = msg.edge[1].toString();
+        for (i = 0; i < links.length; i++) {
+            if (links[i].source.id == sid && links[i].target.id == tid) {
+                links.splice(i,1);
+                break; 
+            }
+        }
+        start();
+    });
+    socket.on('debug', function(msg) {
+        // write the GET/POST requests
+    });
+</script>
