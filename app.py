@@ -141,8 +141,8 @@ def restart():
 @app.route('/api/clearedges', methods=['POST'])
 def clear_edges():
     global edges
+    socketio.emit('clearedges', {'edges': list(edges)})
     edges.clear()
-    socketio.emit('graph', {'nodes':list(nodes), 'edges': list(edges)})
     return jsonify({'message': "success"})
 
 @app.route('/api/clearnodes', methods=['POST'])
@@ -164,7 +164,10 @@ def clear_nodes():
 
 @socketio.on('connect')
 def connect():
-    print('=====================Client connected=================')
+    emit('graph', {'nodes':list(nodes), 'edges': list(edges)})
+
+@socketio.on('graph')
+def graph():
     emit('graph', {'nodes':list(nodes), 'edges': list(edges)})
 
 
@@ -173,4 +176,6 @@ def disconnect():
     print('Client disconnected')
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0')
+    import logging
+    logging.basicConfig(filename='output.log',level=logging.DEBUG)
+    socketio.run(app, debug=False, host='0.0.0.0', port=80)
