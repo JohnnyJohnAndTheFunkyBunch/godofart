@@ -22,8 +22,11 @@
     <div class="row" style="padding-left:10px">
       <div class="col-md-6" >
         <h4>Add/Remove Nodes</h4>
-        <form name = "register" id="register" action="http://52.27.138.18/api/register" method = "POST">
-            <button id = "registerbtn" class="btn btn-primary" type="submit">Register</button>
+        <form class="form-inline" id="register" action="http://52.27.138.18/api/register" method = "POST">
+          <button id = "registerbtn" type="submit" class="btn btn-primary">Register</button>
+          <div class="form-group">
+            <input class="form-control" id="registerinput" size="3" placeholder="ID">
+          </div>
         </form>
         <form class="form-inline" id="unregister" action="http://52.27.138.18/api/unregister" method = "POST">
           <button id = "unregisterbtn" type="submit" class="btn btn-warning">Unregister</button>
@@ -75,16 +78,17 @@
             e.preventDefault(); // prevent the default click action
 
             var $form = $('#register');
-
-            $.ajax({
-                url: $form.attr("action"),
-                type: $form.attr("method"),
-                data: $form.serialize(),
-                success: function (response) {
-                },
-                error: function (response) {
-                },
-            });
+            if ( $("#registerinput").val() ) {
+                $.post('api/registerid', { id: $("#registerinput").val().toString()}, 
+                    function(returnedData){
+                         console.log(returnedData);
+                });
+            } else {
+                $.post('api/register', {}, 
+                    function(returnedData){
+                         console.log(returnedData);
+                });
+            }
         });
         $('#unregisterbtn').on('click', function(e){
             e.preventDefault(); // prevent the default click action
@@ -292,6 +296,25 @@ function tick() {
             }
         }
         links.push({source: sid_node, target: tid_node});
+        start();
+    });
+    socket.on('linkall', function(msg) {
+        alledges = msg.edges;
+        for (j = 0; j < alledges.length; j++) {
+            sid = alledges[j][0].toString();
+            tid = alledges[j][1].toString();
+            sid_node = {};
+            tid_node = {};
+            for (i = 0; i < nodes.length; i++) {
+                if (nodes[i].id == sid) {
+                    sid_node = nodes[i];
+                }
+                if (nodes[i].id == tid) {
+                    tid_node = nodes[i];
+                }
+            }
+            links.push({source: sid_node, target: tid_node});
+        }
         start();
     });
     socket.on('unlink', function(msg) {

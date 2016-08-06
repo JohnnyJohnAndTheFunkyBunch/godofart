@@ -31,6 +31,8 @@ def register_node():
     global uids
     global nodes
     if not uids:
+        while (highest_id in nodes):
+            highest_id = highest_id + 1
         nodes.add(highest_id)
         highest_id = highest_id + 1
         socketio.emit('register',{'id': highest_id - 1})
@@ -40,6 +42,17 @@ def register_node():
         nodes.add(newid)
         socketio.emit('register',{'id': newid})
         return jsonify({'id': newid})
+
+@app.route('/api/registerid', methods=['POST'])
+def register_nodeid():
+    global highest_id
+    global uids
+    global nodes
+    myid=int(request.form['id'])
+    if not(myid in nodes):
+        nodes.add(myid)
+        socketio.emit('register',{'id': myid})
+    return jsonify({'id': myid})
 
 @app.route('/api/unregister', methods=['POST'])
 def unregister_node():
@@ -73,12 +86,14 @@ def link():
     nid=int(request.form['nid'])
     if (myid in nodes and nid in nodes):
         if (myid < nid) :
-            edges.add((myid,nid))
-            socketio.emit('link',{'edge':(myid,nid)})
+            if not((myid,nid) in edges):
+                edges.add((myid,nid))
+                socketio.emit('link',{'edge':(myid,nid)})
             return jsonify({'edge':(myid,nid)})
         elif (myid > nid):
-            edges.add((nid,myid))
-            socketio.emit('link',{'edge':(nid,myid)})
+            if not((nid,myid) in edges):
+                edges.add((nid,myid))
+                socketio.emit('link',{'edge':(nid,myid)})
             return jsonify({'edge':(nid,myid)})
         else:
             return jsonify({'error': "same node"})
@@ -105,6 +120,24 @@ def unlink():
             return jsonify({'error': "same node"})
     except Exception, e:
         return jsonify({'error': repr(e)})
+
+@app.route('/api/linkall', methods=['POST'])
+def linkall():
+    global highest_id
+    global nodes
+    global edges
+    global uids
+    newedges = []
+    for i in nodes:
+        for j in nodes:
+            if (i >= j):
+                continue
+            else:
+                if not((i,j) in edges):
+                    edges.add((i,j))
+                    newedges.append((i,j))
+    socketio.emit('linkall',{'edges':newedges}) 
+    return jsonify({'edges': newedges})
 
 #####################
 #  Front end calls  #
@@ -179,3 +212,4 @@ if __name__ == '__main__':
     import logging
     logging.basicConfig(filename='output.log',level=logging.DEBUG)
     socketio.run(app, debug=False, host='0.0.0.0', port=80)
+    #app.run(debug=False, host='0.0.0.0', port=80)
